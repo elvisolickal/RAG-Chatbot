@@ -6,17 +6,17 @@ import faiss
 import numpy as np
 from transformers import pipeline
 
-# Extract text from PDF
+# Extract text from PDFs
 def extract_text_from_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         return "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
 
-# Chunk the text
+# Break into chunks
 def chunk_text(text, max_words=150):
     words = text.split()
     return [' '.join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
 
-# Load models and build index
+# Cache model + index
 @st.cache_resource
 def load_resources():
     model = SentenceTransformer("paraphrase-MiniLM-L3-v2")
@@ -28,17 +28,17 @@ def load_resources():
             text = extract_text_from_pdf(os.path.join("data", filename))
             chunks.extend(chunk_text(text))
 
-    # Filter junk chunks
+    # Clean junk and remove duplicates
     chunks = [ch for ch in chunks if len(ch.split()) > 20 and "CURRICULUM" not in ch.upper()]
+    chunks = list(set(chunks))
 
-    # Embed and index
     embeddings = model.encode(chunks)
     index = faiss.IndexFlatL2(embeddings[0].shape[0])
     index.add(np.array(embeddings))
 
     return model, qa, index, chunks
 
-# UI
+# Streamlit frontend
 st.set_page_config(page_title="Smart College Chatbot")
 st.title("📘 Smart College Chatbot")
 st.markdown("Ask me anything about your syllabus or college curriculum!")
@@ -48,16 +48,17 @@ query = st.text_input("🔎 Your Question:")
 if query:
     model, qa, index, chunks = load_resources()
     q_embed = model.encode([query])
-    _, I = index.search(np.array(q_embed), k=5)  # ← using more chunks
+    _, I = index.search(np.array(q_embed), k=5)
 
-    # Build context
     context = " ".join([chunks[i] for i in I[0]])
-    context = " ".join(context.split()[:450])  # Truncate for safety
+    context = " ".join(context.split()[:450])  # Limit context
 
-    # Improved prompt
-    prompt = f"""You are a helpful academic assistant at an Indian engineering college.
-Extract and list only the actual subjects mentioned in the following context.
-Avoid repeating headers or titles.
+    # More accurate prompt
+    prompt = f"""You are a helpful assistant. From the following context, extract and list only the subject names for **Semester 1** of the Computer Science and Engineering (AI) program.
+
+- Ignore any elective courses or repeated titles
+- Return a clean, short list of only subject names
+- Don't include course codes or headers
 
 Context:
 {context}
