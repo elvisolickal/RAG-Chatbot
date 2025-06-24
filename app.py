@@ -27,8 +27,9 @@ def chunk_text(text, max_words=150):
 
 @st.cache_resource
 def setup():
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    qa = pipeline("text2text-generation", model="google/flan-t5-base")
+    model = SentenceTransformer("paraphrase-MiniLM-L3-v2")
+   qa = pipeline("text2text-generation", model="google/flan-t5-small")
+
     chunks = load_texts_from_pdfs("data")
     embeddings = model.encode(chunks)
     index = faiss.IndexFlatL2(embeddings[0].shape[0])
