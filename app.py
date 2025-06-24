@@ -28,7 +28,7 @@ def chunk_text(text, max_words=150):
 @st.cache_resource
 def setup():
     model = SentenceTransformer("paraphrase-MiniLM-L3-v2")
-   qa = pipeline("text2text-generation", model="google/flan-t5-small")
+    qa = pipeline("text2text-generation", model="google/flan-t5-small")
 
     chunks = load_texts_from_pdfs("data")
     embeddings = model.encode(chunks)
